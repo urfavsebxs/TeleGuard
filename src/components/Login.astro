@@ -1,0 +1,64 @@
+---
+// src/components/Login.astro
+---
+<section class="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0f1724] to-[#071023] p-8 box-border">
+    <form id="login-form" class="w-full max-w-sm bg-gradient-to-b from-[rgba(255,255,255,0.02)] to-[rgba(0,0,0,0.02)] border border-[rgba(255,255,255,0.04)] p-8 rounded-xl text-slate-100 shadow-lg box-border" novalidate>
+        <h1 class="m-0 mb-4 text-center text-lg font-semibold">Iniciar sesión</h1>
+
+        <div class="flex flex-col gap-1.5 mb-3.5">
+            <label for="username" class="text-sm text-slate-400">Usuario</label>
+            <input id="username" name="username" type="text" autocomplete="username" required
+                class="p-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] text-slate-100 text-sm outline-none transition-shadow transition-colors focus:border-sky-400 focus:ring-4 focus:ring-sky-300/10" />
+        </div>
+
+        <div class="flex flex-col gap-1.5 mb-3.5">
+            <label for="password" class="text-sm text-slate-400">Contraseña</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required
+                class="p-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] text-slate-100 text-sm outline-none transition-shadow transition-colors focus:border-sky-400 focus:ring-4 focus:ring-sky-300/10" />
+        </div>
+
+        <button type="submit" class="w-full py-3 mt-1 bg-gradient-to-r from-sky-400 to-sky-600 text-white border-0 rounded-lg font-semibold active:translate-y-[1px]">
+            Entrar
+        </button>
+
+        <p id="msg" class="mt-3 text-center text-slate-400 min-h-[1.2rem]" aria-live="polite"></p>
+    </form>
+</section>
+
+<script type="module">
+    const form = document.getElementById('login-form');
+    const msg = document.getElementById('msg');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        msg.textContent = '';
+        msg.classList.remove('text-green-300');
+        msg.classList.add('text-slate-400');
+
+        const username = form.username.value.trim();
+        const password = form.password.value;
+
+        if (!username || !password) {
+            msg.textContent = 'Por favor completa usuario y contraseña.';
+            return;
+        }
+
+        // Ejemplo: sustituye por tu lógica de autenticación (fetch a tu API)
+        // Aquí solo simulamos una verificación básica.
+        msg.textContent = 'Verificando...';
+
+        await new Promise(r => setTimeout(r, 700));
+
+        if (username === 'admin' && password === 'password') {
+            msg.textContent = 'Autenticación correcta.';
+            msg.classList.remove('text-slate-400');
+            msg.classList.add('text-green-300');
+            // Redirigir al dashboard
+            window.location.href = '/dashboard';
+        } else {
+            msg.textContent = 'Usuario o contraseña incorrectos.';
+            msg.classList.remove('text-green-300');
+            msg.classList.add('text-slate-400');
+        }
+    });
+</script>
