@@ -21,16 +21,25 @@ export const initBot = async (): Promise<void> => {
   }
 
   try {
-    // Cargar sesión guardada o crear nueva
+    // Cargar sesión desde variable de entorno o archivo
     let sessionString = '';
-    try {
-      const fs = await import('fs');
-      if (fs.existsSync(SESSION_FILE)) {
-        sessionString = fs.readFileSync(SESSION_FILE, 'utf-8').trim();
-        console.log('📂 Sesión cargada desde archivo');
+    
+    // Prioridad 1: Variable de entorno (para producción)
+    if (process.env.TELEGRAM_SESSION_STRING) {
+      sessionString = process.env.TELEGRAM_SESSION_STRING.trim();
+      console.log('📂 Sesión cargada desde variable de entorno');
+    } 
+    // Prioridad 2: Archivo local (para desarrollo)
+    else {
+      try {
+        const fs = await import('fs');
+        if (fs.existsSync(SESSION_FILE)) {
+          sessionString = fs.readFileSync(SESSION_FILE, 'utf-8').trim();
+          console.log('📂 Sesión cargada desde archivo');
+        }
+      } catch (error) {
+        console.log('📝 Creando nueva sesión...');
       }
-    } catch (error) {
-      console.log('📝 Creando nueva sesión...');
     }
 
     const stringSession = new StringSession(sessionString);
