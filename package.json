@@ -5,9 +5,9 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && astro build",
+    "build": "tsc -p tsconfig.backend.json && astro build",
     "start": "node dist/server.js",
-    "vercel-build": "tsc && astro build",
+    "vercel-build": "tsc -p tsconfig.backend.json && astro build",
     "create:admin": "tsx src/scripts/create-admin.ts",
     "dev:astro": "astro dev",
     "build:astro": "astro build",
