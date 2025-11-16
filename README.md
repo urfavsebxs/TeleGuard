@@ -175,14 +175,6 @@ CHECK_INTERVAL_HOURS=6
 3. Se generará `telegram_session.txt`
 4. Copia su contenido a `TELEGRAM_SESSION_STRING`
 
-### 3. Crear Usuario Administrador
-
-```bash
-pnpm create:admin
-```
-
-Esto creará un usuario `admin` (cambialo si gustas) con contraseña hasheada `admin123` (cámbiala después).
-
 ---
 
 ## 🚀 Uso
@@ -364,7 +356,7 @@ railway up
 
 ### Cron Job Automático
 
-Cada **6 horas** (configurable), el sistema:
+Cada **1 hora** (configurable), el sistema:
 
 1. ✅ Verifica todos los usuarios
 2. 📧 Notifica a usuarios **próximos a vencer** (3 días, 1 día)
