@@ -382,16 +382,6 @@ Esto significa que los días se actualizan automáticamente sin necesidad de re-
 
 ---
 
-## 📸 Capturas
-
-### Dashboard
-![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+Screenshot)
-
-### Login
-![Login](https://via.placeholder.com/400x300?text=Login+Screenshot)
-
----
-
 ## 🤝 Contribuir
 
 Las contribuciones son bienvenidas! Por favor:
