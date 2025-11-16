@@ -2,7 +2,7 @@ services:
   - type: web
     name: teleguard
     env: node
-    buildCommand: pnpm install && pnpm build
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
     startCommand: pnpm start
     envVars:
       - key: NODE_ENV
