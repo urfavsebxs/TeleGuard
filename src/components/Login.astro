@@ -28,11 +28,12 @@
 <script type="module">
     const form = document.getElementById('login-form');
     const msg = document.getElementById('msg');
+    const API_URL = 'http://localhost:3000/api';
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         msg.textContent = '';
-        msg.classList.remove('text-green-300');
+        msg.classList.remove('text-green-300', 'text-red-400');
         msg.classList.add('text-slate-400');
 
         const username = form.username.value.trim();
@@ -40,25 +41,62 @@
 
         if (!username || !password) {
             msg.textContent = 'Por favor completa usuario y contraseña.';
+            msg.classList.add('text-red-400');
             return;
         }
 
-        // Ejemplo: sustituye por tu lógica de autenticación (fetch a tu API)
-        // Aquí solo simulamos una verificación básica.
         msg.textContent = 'Verificando...';
 
-        await new Promise(r => setTimeout(r, 700));
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
 
-        if (username === 'admin' && password === 'password') {
-            msg.textContent = 'Autenticación correcta.';
+            const data = await response.json();
+
+            if (response.ok && data.success && data.token) {
+                console.log('[LOGIN] ✓ Login exitoso');
+                console.log('[LOGIN] Token recibido:', data.token.substring(0, 30) + '...');
+                
+                // Guardar en localStorage
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('adminUser', username);
+                
+                // VERIFICAR que se guardó
+                const verificar = localStorage.getItem('authToken');
+                console.log('[LOGIN] Token guardado en localStorage?', !!verificar);
+                console.log('[LOGIN] Token guardado:', verificar ? verificar.substring(0, 30) + '...' : 'NULL');
+                
+                if (!verificar) {
+                    msg.textContent = 'ERROR: No se pudo guardar el token en localStorage';
+                    msg.classList.add('text-red-400');
+                    console.error('[LOGIN] ❌ localStorage.setItem FALLÓ');
+                    return;
+                }
+                
+                msg.textContent = 'Acceso correcto. Redirigiendo...';
+                msg.classList.remove('text-slate-400');
+                msg.classList.add('text-green-300');
+                
+                console.log('[LOGIN] Redirigiendo a /dashboard con token...');
+                setTimeout(() => {
+                    console.log('[LOGIN] EJECUTANDO redirect');
+                    window.location.href = '/dashboard?token=' + encodeURIComponent(data.token);
+                }, 1000);
+            } else {
+                msg.textContent = data.error || 'Usuario o contraseña incorrectos.';
+                msg.classList.remove('text-slate-400');
+                msg.classList.add('text-red-400');
+            }
+        } catch (error) {
+            console.error('Error al iniciar sesión:', error);
+            msg.textContent = 'Error de conexión con el servidor.';
             msg.classList.remove('text-slate-400');
-            msg.classList.add('text-green-300');
-            // Redirigir al dashboard
-            window.location.href = '/dashboard';
-        } else {
-            msg.textContent = 'Usuario o contraseña incorrectos.';
-            msg.classList.remove('text-green-300');
-            msg.classList.add('text-slate-400');
+            msg.classList.add('text-red-400');
         }
     });
 </script>

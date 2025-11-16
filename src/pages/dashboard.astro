@@ -4,7 +4,452 @@ import Layout from '../layouts/Layout.astro';
 ---
 <Layout title="Dashboard - TeleGuard">
     <main class="min-h-screen bg-gradient-to-b from-[#0f1724] to-[#071023] p-8">
-        <h1 class="text-3xl font-bold text-slate-100 mb-6">Dashboard</h1>
-        <p class="text-slate-400">Bienvenido al panel de control.</p>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-slate-100">Dashboard - TeleGuard</h1>
+            <div class="flex gap-3">
+                <button id="sync-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
+                    <span>🔄</span>
+                    <span>Sincronizar Grupo</span>
+                </button>
+                <button id="sync-date-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2">
+                    <span>📅</span>
+                    <span>Sincronizar con Fecha</span>
+                </button>
+                <button id="logout-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                    Cerrar sesión
+                </button>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 max-w-6xl mx-auto">
+            <div class="bg-slate-900/60 rounded-lg p-4 border border-slate-800">
+                <p class="text-slate-400 text-sm">Total</p>
+                <p id="stat-total" class="text-2xl font-bold text-slate-100">0</p>
+            </div>
+            <div class="bg-slate-900/60 rounded-lg p-4 border border-green-800">
+                <p class="text-slate-400 text-sm">Activos</p>
+                <p id="stat-active" class="text-2xl font-bold text-green-400">0</p>
+            </div>
+            <div class="bg-slate-900/60 rounded-lg p-4 border border-yellow-800">
+                <p class="text-slate-400 text-sm">Inactivos</p>
+                <p id="stat-inactive" class="text-2xl font-bold text-yellow-400">0</p>
+            </div>
+            <div class="bg-slate-900/60 rounded-lg p-4 border border-red-800">
+                <p class="text-slate-400 text-sm">Expirados</p>
+                <p id="stat-expired" class="text-2xl font-bold text-red-400">0</p>
+            </div>
+        </div>
+
+        <section class="mt-8 max-w-6xl mx-auto">
+            <div class="bg-slate-900/60 rounded-lg p-6 border border-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-slate-100">Usuarios</h2>
+                    <div class="flex gap-2">
+                        <button id="select-all-btn" class="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600">
+                            Seleccionar todos
+                        </button>
+                        <button id="deselect-all-btn" class="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600">
+                            Deseleccionar todos
+                        </button>
+                        <button id="delete-selected-btn" class="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700">
+                            🗑️ Eliminar seleccionados (<span id="selected-count">0</span>)
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-700">
+                        <thead class="bg-slate-800">
+                            <tr>
+                                <th class="px-4 py-3 text-center text-sm text-slate-300">
+                                    <input type="checkbox" id="checkbox-all" class="w-4 h-4 rounded">
+                                </th>
+                                <th class="px-4 py-3 text-left text-sm text-slate-300">Telegram ID</th>
+                                <th class="px-4 py-3 text-left text-sm text-slate-300">Nombre</th>
+                                <th class="px-4 py-3 text-left text-sm text-slate-300">Días</th>
+                                <th class="px-4 py-3 text-left text-sm text-slate-300">Expira</th>
+                                <th class="px-4 py-3 text-left text-sm text-slate-300">Estado</th>
+                                <th class="px-4 py-3 text-center text-sm text-slate-300">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table" class="bg-slate-900 divide-y divide-slate-800">
+                            <tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
+
+    <script type="module">
+        console.log('[DASHBOARD] Página cargada');
+        
+        const API_URL = 'http://localhost:3000/api';
+        
+        // Leer token de la URL primero
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenFromUrl = urlParams.get('token');
+        
+        let token = localStorage.getItem('authToken');
+        
+        // Si viene token en la URL, guardarlo y limpiar la URL
+        if (tokenFromUrl) {
+            console.log('[DASHBOARD] Token recibido desde URL');
+            localStorage.setItem('authToken', tokenFromUrl);
+            token = tokenFromUrl;
+            // Limpiar URL sin recargar
+            window.history.replaceState({}, document.title, '/dashboard');
+        }
+        
+        console.log('[DASHBOARD] Token disponible:', token ? token.substring(0, 30) + '...' : 'NULL');
+        
+        // Si no hay token, redirigir al login
+        if (!token) {
+            console.error('[DASHBOARD] ❌ NO HAY TOKEN - Redirigiendo a login');
+            window.location.replace('/');
+            throw new Error('No token');
+        }
+        
+        console.log('[DASHBOARD] ✓ Token encontrado, cargando dashboard...');
+
+        document.getElementById('logout-btn')?.addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/';
+        });
+
+        // Sincronizar usuarios del grupo de Telegram
+        document.getElementById('sync-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('sync-btn');
+            if (!btn) return;
+            
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<span>⏳</span><span>Sincronizando...</span>';
+            btn.setAttribute('disabled', 'true');
+            
+            try {
+                const res = await fetch(`${API_URL}/sync/sync-group`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    alert(`Error: ${error.error || 'No se pudo sincronizar'}`);
+                    return;
+                }
+                
+                const data = await res.json();
+                alert(`✅ Sincronización completada!\n\n➕ Creados: ${data.stats.created}\n✅ Actualizados: ${data.stats.updated}\n⏭️ Omitidos: ${data.stats.skipped}\n📊 Total: ${data.stats.total}`);
+                
+                // Recargar datos
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                console.error('Error sincronizando:', e);
+                alert('❌ Error al sincronizar usuarios del grupo');
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.removeAttribute('disabled');
+            }
+        });
+
+        // Sincronizar con fecha de ingreso al grupo
+        document.getElementById('sync-date-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('sync-date-btn');
+            if (!btn) return;
+            
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<span>⏳</span><span>Sincronizando...</span>';
+            btn.setAttribute('disabled', 'true');
+            
+            try {
+                const res = await fetch(`${API_URL}/sync/sync-group-with-date`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    alert(`Error: ${error.error || 'No se pudo sincronizar'}`);
+                    return;
+                }
+                
+                const data = await res.json();
+                alert(`✅ Sincronización con fechas completada!\n\n➕ Creados: ${data.stats.created}\n✅ Actualizados: ${data.stats.updated}\n⏭️ Omitidos: ${data.stats.skipped}\n📊 Total: ${data.stats.total}\n\nℹ️ Los usuarios nuevos se crearon usando su fecha real de ingreso al grupo.`);
+                
+                // Recargar datos
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                console.error('Error sincronizando:', e);
+                alert('❌ Error al sincronizar usuarios del grupo');
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.removeAttribute('disabled');
+            }
+        });
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_URL}/users/stats`, { 
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.status === 401) {
+                    localStorage.clear();
+                    window.location.href = '/';
+                    return;
+                }
+                
+                if (!res.ok) {
+                    console.error('Error stats:', res.status, await res.text());
+                    return;
+                }
+                
+                const data = await res.json();
+                console.log('Stats recibidas:', data); // Debug
+                
+                // El backend devuelve { success, data: { total, active, ... } }
+                const stats = data.data || data;
+                
+                document.getElementById('stat-total').textContent = stats.total || 0;
+                document.getElementById('stat-active').textContent = stats.active || 0;
+                document.getElementById('stat-inactive').textContent = stats.inactive || 0;
+                document.getElementById('stat-expired').textContent = stats.expired || 0;
+            } catch (e) {
+                console.error('Error stats:', e);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_URL}/users`, { 
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.status === 401) {
+                    localStorage.clear();
+                    window.location.href = '/';
+                    return;
+                }
+                
+                if (!res.ok) {
+                    const tbody = document.getElementById('users-table');
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-400">Error de autenticación</td></tr>';
+                    return;
+                }
+                
+                const response = await res.json();
+                const tbody = document.getElementById('users-table');
+
+                // El backend devuelve { success, count, data }
+                const users = response.data || response;
+
+                if (!Array.isArray(users) || users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Sin usuarios</td></tr>';
+                    return;
+                }
+
+                console.log('Primer usuario:', users[0]); // Debug
+
+                tbody.innerHTML = users.map(u => {
+                    // Calcular días restantes en tiempo real
+                    const daysRemaining = u.daysRemaining !== undefined ? u.daysRemaining : u.paymentDurationDays;
+                    
+                    return `
+                    <tr class="hover:bg-slate-800">
+                        <td class="px-4 py-4 text-center">
+                            <input type="checkbox" class="user-checkbox w-4 h-4 rounded" data-user-id="${u._id || u.id}">
+                        </td>
+                        <td class="px-4 py-4 text-slate-200">${u.telegramId}</td>
+                        <td class="px-4 py-4 text-slate-100">${u.firstName} ${u.lastName || ''}</td>
+                        <td class="px-4 py-4 text-slate-200">${daysRemaining}</td>
+                        <td class="px-4 py-4 text-slate-200">${new Date(u.expirationDate).toLocaleDateString()}</td>
+                        <td class="px-4 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs ${u.isActive ? 'bg-green-600' : 'bg-red-600'} text-white">
+                                ${u.isActive ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center space-x-2">
+                            <button onclick="extendUser('${u._id || u.id}')" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">Extender</button>
+                            <button onclick="reduceUser('${u._id || u.id}')" class="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs">Reducir</button>
+                            <button onclick="deleteUser('${u._id || u.id}')" class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">Eliminar</button>
+                        </td>
+                    </tr>
+                `}).join('');
+                
+                // Agregar event listeners a los checkboxes
+                document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateSelectedCount);
+                });
+            } catch (e) {
+                console.error('Error users:', e);
+            }
+        }
+
+        window.extendUser = async (id) => {
+            const days = prompt('Días a extender:', '30');
+            if (!days) return;
+            try {
+                const res = await fetch(`${API_URL}/users/${id}/extend`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ additionalDays: parseInt(days) })
+                });
+                
+                const data = await res.json();
+                
+                // Si hay un enlace de invitación, mostrarlo
+                if (data.inviteLink) {
+                    if (data.inviteLink.sent) {
+                        alert(`✅ Extendido!\n\n✉️ ${data.inviteLink.message}`);
+                    } else {
+                        // Copiar al portapapeles
+                        navigator.clipboard.writeText(data.inviteLink.link).then(() => {
+                            alert(`✅ Extendido!\n\n⚠️ ${data.inviteLink.message}\n\n📋 El enlace ha sido copiado al portapapeles.`);
+                        }).catch(() => {
+                            // Si falla copiar, mostrar en prompt para que pueda seleccionar
+                            prompt('⚠️ No se pudo enviar el mensaje.\nCopia este enlace manualmente:', data.inviteLink.link);
+                        });
+                    }
+                } else {
+                    alert('✅ Extendido');
+                }
+                
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                alert('❌ Error');
+            }
+        };
+
+        window.reduceUser = async (id) => {
+            const days = prompt('Días a reducir:', '7');
+            if (!days) return;
+            try {
+                await fetch(`${API_URL}/users/${id}/reduce`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ daysToReduce: parseInt(days) })
+                });
+                alert('Reducido');
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                alert('Error');
+            }
+        };
+
+        window.deleteUser = async (id) => {
+            if (!confirm('¿Eliminar usuario de la base de datos y expulsar del grupo de Telegram?\n\nPodrá volver a entrar con un enlace de invitación.')) return;
+            try {
+                const res = await fetch(`${API_URL}/users/${id}`, { 
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+                
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                console.error('Error:', e);
+                alert('Error al eliminar usuario');
+            }
+        };
+
+        // Funciones para selección múltiple
+        function updateSelectedCount() {
+            const selected = document.querySelectorAll('.user-checkbox:checked').length;
+            document.getElementById('selected-count').textContent = selected;
+        }
+
+        // Checkbox de "seleccionar todos"
+        document.getElementById('checkbox-all')?.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.user-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateSelectedCount();
+        });
+
+        // Botón "Seleccionar todos"
+        document.getElementById('select-all-btn')?.addEventListener('click', () => {
+            document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = true);
+            document.getElementById('checkbox-all').checked = true;
+            updateSelectedCount();
+        });
+
+        // Botón "Deseleccionar todos"
+        document.getElementById('deselect-all-btn')?.addEventListener('click', () => {
+            document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('checkbox-all').checked = false;
+            updateSelectedCount();
+        });
+
+        // Botón "Eliminar seleccionados"
+        document.getElementById('delete-selected-btn')?.addEventListener('click', async () => {
+            const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.userId);
+            
+            if (selectedIds.length === 0) {
+                alert('⚠️ No hay usuarios seleccionados');
+                return;
+            }
+
+            if (!confirm(`¿Eliminar ${selectedIds.length} usuario(s) de la base de datos y expulsarlos del grupo de Telegram?\n\nPodrán volver a entrar con un enlace de invitación.`)) {
+                return;
+            }
+
+            const btn = document.getElementById('delete-selected-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Eliminando...';
+            btn.disabled = true;
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const userId of selectedIds) {
+                try {
+                    const res = await fetch(`${API_URL}/users/${userId}`, { 
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (e) {
+                    console.error('Error eliminando usuario:', userId, e);
+                    errorCount++;
+                }
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+
+            alert(`✅ Eliminación completada\n\n✓ Exitosos: ${successCount}\n✗ Errores: ${errorCount}`);
+            
+            loadUsers();
+            loadStats();
+        });
+
+        loadStats();
+        loadUsers();
+    </script>
 </Layout>
