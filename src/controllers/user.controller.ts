@@ -178,49 +178,75 @@ export const deleteUser = async (req: Request, res: Response) => {
         console.log(`🚫 Intentando expulsar a ${user.firstName} (${user.telegramId}) del grupo...`);
 
         try {
-          // Primero, banear temporalmente para expulsar
-          await client.invoke(
-            new Api.channels.EditBanned({
+          // Primero obtener la entidad del usuario desde el grupo
+          // @ts-ignore
+          const participants = await client.invoke(
+            new Api.channels.GetParticipants({
               channel: groupId,
-              participant: user.telegramId.toString(),
-              bannedRights: new Api.ChatBannedRights({
-                untilDate: Math.floor(Date.now() / 1000) + 60, // 60 segundos
-                viewMessages: true, // true = no puede ver mensajes (lo expulsa)
-                sendMessages: true,
-                sendMedia: true,
-                sendStickers: true,
-                sendGifs: true,
-                sendGames: true,
-                sendInline: true,
-                embedLinks: true,
-              }),
+              filter: new Api.ChannelParticipantsSearch({ q: '' }),
+              offset: 0,
+              limit: 1000,
+              // @ts-ignore
+              hash: 0,
             })
           );
 
-          console.log(`⏳ Usuario restringido temporalmente, esperando 2 segundos...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          if (!('users' in participants)) {
+            throw new Error('No se pudieron obtener los participantes del grupo');
+          }
 
-          // Luego, quitar el baneo para que pueda volver a entrar
-          await client.invoke(
-            new Api.channels.EditBanned({
-              channel: groupId,
-              participant: user.telegramId.toString(),
-              bannedRights: new Api.ChatBannedRights({
-                untilDate: 0,
-                viewMessages: false,
-                sendMessages: false,
-                sendMedia: false,
-                sendStickers: false,
-                sendGifs: false,
-                sendGames: false,
-                sendInline: false,
-                embedLinks: false,
-              }),
-            })
-          );
+          // Buscar el usuario específico
+          const targetUser = participants.users.find((u: any) => u.id?.toString() === user.telegramId);
+          
+          if (!targetUser) {
+            console.log(`⚠️ Usuario ${user.telegramId} no encontrado en el grupo (ya fue expulsado o no está)`);
+            telegramRemoved = true; // Considerarlo éxito si ya no está
+            telegramError = 'El usuario ya no está en el grupo';
+          } else {
+            // Ahora sí, banear temporalmente para expulsar usando la entidad encontrada
+            await client.invoke(
+              new Api.channels.EditBanned({
+                channel: groupId,
+                participant: targetUser,
+                bannedRights: new Api.ChatBannedRights({
+                  untilDate: Math.floor(Date.now() / 1000) + 60, // 60 segundos
+                  viewMessages: true, // true = no puede ver mensajes (lo expulsa)
+                  sendMessages: true,
+                  sendMedia: true,
+                  sendStickers: true,
+                  sendGifs: true,
+                  sendGames: true,
+                  sendInline: true,
+                  embedLinks: true,
+                }),
+              })
+            );
 
-          telegramRemoved = true;
-          console.log(`✅ Usuario expulsado del grupo de Telegram (puede volver a entrar con invitación)`);
+            console.log(`⏳ Usuario restringido temporalmente, esperando 2 segundos...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Luego, quitar el baneo para que pueda volver a entrar
+            await client.invoke(
+              new Api.channels.EditBanned({
+                channel: groupId,
+                participant: targetUser,
+                bannedRights: new Api.ChatBannedRights({
+                  untilDate: 0,
+                  viewMessages: false,
+                  sendMessages: false,
+                  sendMedia: false,
+                  sendStickers: false,
+                  sendGifs: false,
+                  sendGames: false,
+                  sendInline: false,
+                  embedLinks: false,
+                }),
+              })
+            );
+
+            telegramRemoved = true;
+            console.log(`✅ Usuario expulsado del grupo de Telegram (puede volver a entrar con invitación)`);
+          }
         } catch (telegramErr: any) {
           console.error('❌ Error específico de Telegram:', telegramErr.message);
           if (telegramErr.message?.includes('CHAT_ADMIN_REQUIRED')) {
@@ -228,6 +254,10 @@ export const deleteUser = async (req: Request, res: Response) => {
           } else if (telegramErr.message?.includes('USER_NOT_PARTICIPANT')) {
             telegramError = 'El usuario ya no está en el grupo';
             telegramRemoved = true; // Considerarlo como éxito
+          } else if (telegramErr.message?.includes('Could not find the input entity')) {
+            telegramError = 'El usuario ya no está en el grupo';
+            telegramRemoved = true; // Considerarlo como éxito
+            console.log('ℹ️  Usuario no encontrado en Telegram (probablemente ya fue expulsado)');
           } else {
             telegramError = telegramErr.message;
           }
