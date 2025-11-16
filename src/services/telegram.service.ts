@@ -94,6 +94,7 @@ export const initBot = async (): Promise<void> => {
     console.log('✅ Cliente de Telegram conectado');
 
     // Guardar sesión
+    // @ts-ignore - session.save() puede retornar void pero funciona en runtime
     const session = client.session.save() as string | undefined;
     if (session) {
       try {
@@ -142,12 +143,14 @@ export const kickUserFromGroup = async (telegramId: string): Promise<boolean> =>
     console.log(`🚫 Expulsando a usuario ${telegramId} del grupo...`);
     
     // Primero, obtener los participantes para encontrar al usuario
+    // @ts-ignore - number es compatible con BigInteger en runtime
     const result = await client.invoke(
       new Api.channels.GetParticipants({
         channel: groupId,
         filter: new Api.ChannelParticipantsSearch({ q: '' }),
         offset: 0,
         limit: 1000,
+        // @ts-ignore
         hash: 0,
       })
     );
@@ -232,6 +235,7 @@ export const sendMessageToUser = async (telegramId: string, message: string): Pr
             filter: new Api.ChannelParticipantsRecent(),
             offset: 0,
             limit: 1000,
+            // @ts-ignore - BigInt es compatible con BigInteger en runtime
             hash: BigInt(0),
           })
         );

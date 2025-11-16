@@ -68,7 +68,7 @@ const UserSchema = new Schema<IUser>(
       transform: function(doc, ret) {
         ret.id = ret._id;
         delete ret._id;
-        delete ret.__v;
+        if (ret.__v !== undefined) delete ret.__v;
         return ret;
       },
     },

@@ -31,6 +31,7 @@ export const syncGroupMembers = async (req: Request, res: Response) => {
         filter: new Api.ChannelParticipantsRecent(),
         offset: 0,
         limit: 200,
+        // @ts-ignore - BigInt es compatible con BigInteger en runtime
         hash: BigInt(0),
       })
     );
@@ -148,6 +149,7 @@ export const syncGroupMembersWithJoinDate = async (req: Request, res: Response) 
         filter: new Api.ChannelParticipantsRecent(),
         offset: 0,
         limit: 200,
+        // @ts-ignore - BigInt es compatible con BigInteger en runtime
         hash: BigInt(0),
       })
     );

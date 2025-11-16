@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
 import userRoutes from './routes/user.routes';
 import authRoutes from './routes/auth.routes';
 import syncRoutes from './routes/sync.routes';
@@ -46,7 +47,22 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/users', userRoutes);
 
-// Ruta raíz
+// Servir archivos estáticos de Astro en producción
+if (process.env.NODE_ENV === 'production') {
+  const clientPath = path.join(__dirname, '../dist/client');
+  app.use(express.static(clientPath));
+  
+  // Servir index.html para rutas del frontend
+  app.get('*', (req: Request, res: Response, next: NextFunction) => {
+    // Evitar interceptar las rutas de API
+    if (req.path.startsWith('/api/') || req.path === '/health') {
+      return next();
+    }
+    res.sendFile(path.join(clientPath, 'index.html'));
+  });
+}
+
+// Ruta raíz para desarrollo
 app.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'TeleGuard Bot API',
