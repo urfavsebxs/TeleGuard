@@ -58,6 +58,22 @@ export const initBot = async (): Promise<void> => {
       const me = await client.getMe();
       console.log(`✅ Ya autenticado como: ${(me as any).firstName}`);
     } catch (error) {
+      // En producción, no podemos usar QR interactivo
+      if (process.env.NODE_ENV === 'production') {
+        console.error('❌ No autenticado en producción');
+        console.error('⚠️  TELEGRAM_SESSION_STRING no es válida o ha expirado');
+        console.error('');
+        console.error('📋 Solución:');
+        console.error('   1. Ejecuta localmente: npm run dev');
+        console.error('   2. Autentica con QR en tu máquina local');
+        console.error('   3. Copia el contenido de telegram_session.txt');
+        console.error('   4. En Render, actualiza la variable TELEGRAM_SESSION_STRING');
+        console.error('   5. Redespliega el servicio');
+        console.error('');
+        throw new Error('Sesión de Telegram no válida en producción');
+      }
+      
+      // En desarrollo, usar QR
       console.log('📲 No autenticado, iniciando login por QR...\n');
       
       try {

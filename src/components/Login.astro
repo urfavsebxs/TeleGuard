@@ -28,7 +28,10 @@
 <script type="module">
     const form = document.getElementById('login-form');
     const msg = document.getElementById('msg');
-    const API_URL = 'http://localhost:3000/api';
+    // Detectar automáticamente la URL del API
+    const API_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000/api'
+        : `${window.location.origin}/api`;
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();

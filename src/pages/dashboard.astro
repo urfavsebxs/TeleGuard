@@ -84,7 +84,10 @@ import Layout from '../layouts/Layout.astro';
     <script type="module">
         console.log('[DASHBOARD] Página cargada');
         
-        const API_URL = 'http://localhost:3000/api';
+        // Detectar automáticamente la URL del API
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000/api'
+            : `${window.location.origin}/api`;
         
         // Leer token de la URL primero
         const urlParams = new URLSearchParams(window.location.search);
